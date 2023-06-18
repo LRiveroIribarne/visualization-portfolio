@@ -1,0 +1,97 @@
+
+  Clip and download ImageCollection data in GEE
+  
+  Dongdong Kong
+  
+  ------------------------------
+  1. You need to change the region to yours or 
+     uncomment and define the range in L38.
+  2. For small regions, please use EXPORT by multiple bands ee.Image; 
+     for large regions, please use EXPORT by ee.ImageCollection;
+     
+     If you use EXPORT by ee.ImageCollection, please remove `.limit(3)` in L67
+ 
+ 
+ var imgcol_8d = ee.ImageCollection(CASIGSNRRPMLV2_v017);
+ var region = ee.FeatureCollection(".../vineyard_square_aoi");
+    
+var pkg_export = require('userslucasriveroScripts_LRIkongdd_pkgs_export');
+
+ get bbox of assigned region 
+function getRange(region){
+    var bound = ee.Feature(region.first()).bounds();
+    bound = bound.geometry().coordinates().get(0).getInfo();
+    bound = ee.List(bound);
+    
+    var x = ee.Array(bound.get(0)).floor(),
+        y = ee.Array(bound.get(2)).ceil();
+        
+    var range = ee.Array.cat([x, y], 0).getInfo();
+    return range;
+}
+
+ load imgcol
+var imgcol = imgcol_8d;
+ `qc` band is not selected here. Because qc will become meaningless after resample.
+imgcol = ee.ImageCollection(imgcol.toList(1000)).select([0, 1, 2, 3]);
+
+ Define the exporting region 
+ Get the range from code{region}, or define the range on your own.
+var range = getRange(region);          1th solution
+ var range = [73, 25, 105, 40];      2th solution, range = [lon_min, lat_min, lon_max, lat_max]
+ var range  = [-180, -60, 180, 90];  global
+
+print(range);  check the defined range
+ Map.addLayer(bound, {}, 'bounds');
+
+
+var cellsize = 1  240,     The resolution you want to resample, in the unit of degree.
+                           The original resolution is 500m (1240 deg).
+    type   = 'drive',      Three options 'drive', 'asset', 'cloud'
+    folder = 'PML',        Download data to this directory.
+    crs    = 'EPSG4326';  Projection you want to transform. The default is wgs84.
+                           The original is MODIS Sinusoidal projection.
+
+var date_begin = '2017-01-01',  begin time  
+    date_end   = '2017-12-31';  end time
+    
+imgcol = imgcol.filterDate(date_begin, date_end);
+
+
+
+ 1. EXPORT by ee.ImageCollection 
+
+
+ clip regional data 
+imgcol = imgcol.map(function(img){ return img.clip(region); });
+print(imgcol);
+
+var visualization = {
+  bands ['Ec'],
+  min 0.0,
+  max 16.0,
+  palette [
+    a50026,d73027,f46d43,fdae61,fee08b,ffffbf,
+    d9ef8b,a6d96a,66bd63,1a9850,006837,
+  ]
+};
+
+Map.addLayer(imgcol, visualization, PML_V2 Ec);
+
+
+var options = {
+    type drive,
+    range  [-76,-57,-66,-17],  Gobal - [-180, -60, 180, 90]  
+    cellsize 1  240,
+     crsTransform  [463.312716528, 0, -20015109.354, 0, -463.312716527, 10007554.677],  prj.crsTransform;
+     scale         463.3127165275,  prj.scale
+    crs 'EPSG4326',  'SR-ORG6974',  EPSG4326
+    folder 'PMLV2'
+};
+
+pkg_export.ExportImgCol(imgcol, PML_V2_, options);
+
+ BORRAR DOBLE SLASH LINEA 93 y pegar en consola web para descargar sin apretar RUN en TASKS
+
+  Copyright (c) 2017 Dongdong Kong. All rights reserved.  This work is licensed under the terms of the MIT license.  For a copy, see httpsopensource.orglicensesMIT.   Batch execute GEE Export task   First of all, You need to generate export tasks. And run button was shown.   Then press F12 get into console, then paste those scripts in it, and press  enter. All the task will be start automatically.  (Firefox and Chrome are supported. Other Browsers I didn't test.)   @Author  Dongdong Kong , 28 Aug' 2017  Sun Yat-sen University  
+ function runTaskList(){ var tasklist = document.getElementsByClassName('task local type-EXPORT_IMAGE awaiting-user-config'); for (var i = 0; i  tasklist.length; i++) tasklist[i].getElementsByClassName('run-button')[0].click(); } function confirmAll() { var ok = document.getElementsByClassName('goog-buttonset-default goog-buttonset-action'); for (var i = 0; i  ok.length; i++) ok[i].click(); } runTaskList(); confirmAll();
